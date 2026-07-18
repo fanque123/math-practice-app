@@ -290,7 +290,9 @@
   const micText = document.getElementById('mic-text');
   const manualForm = document.getElementById('manual-form');
   const manualAnswer = document.getElementById('manual-answer');
-  const quitBtn = document.getElementById('quit-btn');
+  const quizBackBtn = document.getElementById('quiz-back-btn');
+  const quizExitBtn = document.getElementById('quiz-exit-btn');
+  const setupExitBtn = document.getElementById('setup-exit-btn');
 
   const scoreText = document.getElementById('score-text');
   const scoreMessage = document.getElementById('score-message');
@@ -328,6 +330,35 @@
     registerServiceWorker();
     setupInstallPrompt();
     checkSpeechSupport();
+    // 「退出/退回」按钮只在 APK 里显示（浏览器里退出网页没有意义，隐藏）
+    if (nativeVoice) {
+      quizExitBtn.classList.remove('hidden');
+      setupExitBtn.classList.remove('hidden');
+    }
+  }
+
+  // 停止一切语音输出（浏览器与 APK 两条路径）
+  function stopAllSpeech() {
+    if (nativeVoice) {
+      nativeVoice.stopSpeaking();
+    } else if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+  }
+
+  // 退出应用：APK 调原生 finish()；浏览器没有退出概念，退回首页
+  function quitApp() {
+    stopAllSpeech();
+    clearInterimTimer();
+    if (recognition && isListening) {
+      try { recognition.stop(); } catch (e) {}
+    }
+    stopMicStream();
+    if (nativeVoice) {
+      nativeVoice.exit();
+    } else {
+      switchScreen('setup');
+    }
   }
 
   // ==================== 发声能力自检 ====================
@@ -775,6 +806,9 @@
       micText.textContent = '点击重说';
       setRobotState(quizRobot);
       clearInterimTimer();
+      // 答案已在判定时，原生端停止识别补发的错误事件直接忽略，
+      // 否则会把正确的反馈文字覆盖成「语音识别出错」
+      if (state.isAnswering) return;
       if (event.error === 'no-speech') {
         setFeedback('wrong', '没听清，请再试一次');
       } else if (event.error === 'not-allowed') {
@@ -1235,8 +1269,9 @@
       handleAnswer(val);
     });
 
-    quitBtn.addEventListener('click', () => {
-      window.speechSynthesis.cancel();
+    // 返回：回启动页重新设置题目；退出：直接关掉 App
+    quizBackBtn.addEventListener('click', () => {
+      stopAllSpeech();
       clearInterimTimer();
       if (recognition && isListening) {
         try { recognition.stop(); } catch (e) {}
@@ -1245,6 +1280,8 @@
       stopMicStream();
       switchScreen('setup');
     });
+    quizExitBtn.addEventListener('click', quitApp);
+    setupExitBtn.addEventListener('click', quitApp);
 
     restartBtn.addEventListener('click', startQuiz);
     homeBtn.addEventListener('click', () => {
