@@ -27,7 +27,10 @@ server.js           Node 静态服务器，PORT/HOST 环境变量可改（默认
 start-server.bat    Windows 一键启动：先开浏览器 http://localhost:8000 再 node server.js
 server.log          服务器运行日志（运行时产物，勿提交逻辑依赖它）
 README.md           用户启动说明
-安装分享指南.md      手机安装与分享给朋友的步骤（部署 HTTPS 静态托管 → 添加到主屏幕）
+安装分享指南.md      手机安装与分享给朋友的步骤（APK 直装 + 网页版 PWA 两种方式）
+android/            安卓壳工程（提交入库）：极简 WebView 加载 `file:///android_asset/index.html`，把网页打包成离线 APK；`app/build.gradle` 的 `syncWebAssets` 任务在构建前自动从项目根拷贝网页文件到 assets（**注意是 `from('../..')`**，相对 android/app 模块目录）；镜像走阿里云 maven（google 源被墙）；local.properties（SDK 路径）与 assets/ 不入库
+build-tools/        本地安卓工具链（**不入库**）：jdk（Temurin 17）、gradle-8.10、sdk（platforms/android-35 + build-tools/35.0.0 + 手写 licenses 授权文件）、gradle-home（GRADLE_USER_HOME）、dl（安装包可删）。全部来自清华/腾讯镜像，重建时重新下载解压即可
+口算机器人.apk      构建产物（**不入库**），直接发给朋友安装
 ```
 
 ## app.js 结构（自上而下）
@@ -79,6 +82,21 @@ README.md           用户启动说明
 - 本地已是 git 仓库（remote `origin` 指向上面的仓库，`.gitignore` 只排除 `server.log`）。**不要 `git commit/push` 或做任何 git 变更操作，除非用户明确要求。**
 - **推送凭据的坑**：本机凭据管理器里存的是另一个企业托管账号（Kitty-Fan_sgsdev，不能建公开仓库），直接 push 会被它顶掉报 `invalid credentials`。fanque123 的授权走 GitHub 设备流（client_id `178c6fc778ccc68e1d6a`，scope `repo`）拿临时令牌，推送时用 `git -c credential.helper= push "https://x-access-token:<TOKEN>@github.com/fanque123/math-practice-app.git" main:main`（令牌内联在 URL 里，不落 remote 配置、不存凭据管理器）。令牌失效就重新走一遍设备流。
 - **线上更新流程**：改代码 → 升 `service-worker.js` 的 `CACHE_NAME` → commit + push。Pages 构建约 1 分钟；用户端 SW 是网络优先，打开两次内自动拿到新版。
+
+## 安卓 APK 构建（离线安装包）
+
+- 一键命令（Git Bash，在 `android/` 下）：
+  ```bash
+  export JAVA_HOME='C:\Users\KITTY_FAN\Desktop\math-practice-app\build-tools\jdk'
+  export ANDROID_SDK_ROOT='C:\Users\KITTY_FAN\Desktop\math-practice-app\build-tools\sdk'
+  export GRADLE_USER_HOME='C:\Users\KITTY_FAN\Desktop\math-practice-app\build-tools\gradle-home'
+  ../build-tools/gradle/gradle-8.10/bin/gradle assembleDebug --no-daemon
+  ```
+  产物在 `android/app/build/outputs/apk/debug/app-debug.apk`，拷贝为项目根的 `口算机器人.apk`。
+- **网页改动后**：照常升 `service-worker.js` 缓存版本（网页端），然后重跑上面的命令即得新 APK（`syncWebAssets` 会自动拷最新网页文件）。
+- **debug 签名**：APK 用 debug.keystore 签名（在 GRADLE_USER_HOME 旁的 `.android/` 或用户目录）。朋友覆盖安装新版要求签名一致；工具链重建后若签名变了，让对方先卸载再装。
+- **WebView 限制**：语音识别不可用（手动输入路径必须保持可用）；语音朗读走系统 TTS（小米=讯飞/小爱引擎），无声环境的提示与看门狗逻辑（`checkSpeechSupport()`/`speak()`）在 WebView 里同样生效。App 无任何权限、无 INTERNET，纯离线。
+- 入坑记录：`local.properties` 路径用正斜杠（反斜杠 `\U` 会被当 unicode 转义报"文件名语法错误"）；SDK licenses 是手写哈希文件（`build-tools/sdk/licenses/`），等同于 `sdkmanager --licenses`。
 
 ## 修改后验证（本会话工作目录在 C:/Windows/System32，项目实际路径要用绝对路径）
 

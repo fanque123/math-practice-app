@@ -1,0 +1,31 @@
+plugins {
+    id 'com.android.application' version '8.7.3'
+}
+
+android {
+    namespace 'com.fanque123.mathpractice'
+    compileSdk 35
+    buildToolsVersion "35.0.0"
+
+    defaultConfig {
+        applicationId "com.fanque123.mathpractice"
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName "1.0"
+    }
+}
+
+// 打包前自动把项目根目录的网页文件拷进 assets（单一数据源，网页改了重新打包即可）
+tasks.register('syncWebAssets', Copy) {
+    from('../..') {
+        include 'index.html'
+        include 'app.js'
+        include 'styles.css'
+        include 'manifest.json'
+        include 'service-worker.js'
+        include '*.png'
+    }
+    into 'src/main/assets'
+}
+preBuild.dependsOn syncWebAssets
