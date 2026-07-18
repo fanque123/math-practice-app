@@ -32,6 +32,7 @@
           <div class="side-btn-row">
             <button id="settings-btn" class="secondary-btn settings-btn" type="button">⚙ 设置</button>
             <button id="install-btn" class="secondary-btn settings-btn hidden" type="button">📲 安装App</button>
+            <button id="setup-exit-btn" class="secondary-btn settings-btn hidden" type="button">↩ 退回</button>
           </div>
         </div>
 
@@ -64,9 +65,10 @@
     <!-- 练习界面：左边角色，右边题目 -->
     <section id="quiz-screen" class="screen">
       <div class="quiz-header">
-        <button id="quit-btn" class="icon-btn" title="退出">✕</button>
+        <button id="quiz-back-btn" class="icon-btn text-btn" type="button">‹ 返回</button>
         <div class="progress-bar"><div id="progress-fill"></div></div>
         <span id="progress-text">1 / 10</span>
+        <button id="quiz-exit-btn" class="icon-btn text-btn hidden" type="button">退出</button>
       </div>
 
       <div class="quiz-body">
