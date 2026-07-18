@@ -212,6 +212,18 @@ body {
   cursor: pointer;
 }
 
+/* 做题页的返回/退出文字按钮 */
+.text-btn {
+  width: auto;
+  border-radius: 12px;
+  padding: 0 14px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--text);
+  flex-shrink: 0;
+}
+
 /* 电池充电式进度条 */
 .progress-bar {
   flex: 1;
@@ -1073,11 +1085,16 @@ body.mode-princess .robot-sad .robot-smoke {
     margin-bottom: 10px;
   }
 
-  /* 练习页:角色横排在题目上方 */
+  /* 练习页:角色横排在题目上方,整体垂直居中 */
   .quiz-body {
     flex-direction: column;
-    justify-content: flex-start;
-    gap: 8px;
+    justify-content: center;
+    gap: 20px;
+  }
+
+  .quiz-main {
+    flex: none;
+    width: 100%;
   }
 
   .quiz-side {
