@@ -65,10 +65,8 @@
     <!-- 练习界面：左边角色，右边题目 -->
     <section id="quiz-screen" class="screen">
       <div class="quiz-header">
-        <button id="quiz-back-btn" class="icon-btn text-btn" type="button">‹ 返回</button>
         <div class="progress-bar"><div id="progress-fill"></div></div>
         <span id="progress-text">1 / 10</span>
-        <button id="quiz-exit-btn" class="icon-btn text-btn hidden" type="button">退出</button>
       </div>
 
       <div class="quiz-body">
@@ -94,6 +92,12 @@
             </form>
           </div>
         </div>
+      </div>
+
+      <!-- 底部操作栏：返回重设题目 / 退出 App -->
+      <div class="quiz-footer">
+        <button id="quiz-back-btn" class="text-btn" type="button">‹ 返回</button>
+        <button id="quiz-exit-btn" class="text-btn hidden" type="button">退出</button>
       </div>
     </section>
 
