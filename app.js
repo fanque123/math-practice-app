@@ -827,6 +827,13 @@
     }
   }
 
+  // 机器人音效台词：擎天柱的答对/答错固定台词用预制音频播放
+  //（TTS 干声 + 30Hz 环形调制，经典机器人金属声；自定义台词不匹配时回退 TTS）
+  const ROBOT_AUDIO = {
+    '嘟嘟，好棒！': 'audio/optimus-praise.wav',
+    '嘟嘟，加油！': 'audio/optimus-encourage.wav',
+  };
+
   function speak(text, onEnd, opts) {
     // 说话前先停止识别，避免录到机器声
     if (recognition && isListening) {
@@ -846,6 +853,18 @@
       if (onEnd) onEnd();
     };
     const watchdog = setTimeout(finish, Math.min(3000 + text.length * 350, 12000));
+
+    // 机器人音效台词：直接播放预制音频（浏览器/APK 都支持）
+    const robotAudioFile = ROBOT_AUDIO[text];
+    if (robotAudioFile) {
+      try {
+        const audio = new Audio(robotAudioFile);
+        audio.onended = finish;
+        audio.onerror = finish;
+        audio.play().catch(() => finish());
+        return;
+      } catch (e) { /* 播放失败则继续走下面的 TTS */ }
+    }
 
     // APK 内：走系统 TTS（MainActivity 说完会调 __nativeTtsDone → finish）
     if (nativeVoice) {
