@@ -127,7 +127,7 @@
       praise: '嘟嘟，好棒！',
       encourage: '嘟嘟，加油！',
       greeting: '你好，我是擎天柱！<br>选好题目，和我一起战斗吧！',
-      voice: { male: true, rate: 0.78, pitch: 0.45 }, // 低沉领袖腔
+      voice: { male: true, rate: 0.8, pitch: 0.7 }, // 威震天式低沉威严（过低会失真，0.7 兼顾清晰）
     },
     princess: {
       // 公主：金色波浪长发、宝石皇冠、蓝色礼服裙、星星魔杖
@@ -330,11 +330,9 @@
     registerServiceWorker();
     setupInstallPrompt();
     checkSpeechSupport();
-    // 「退出/退回」按钮只在 APK 里显示（浏览器里退出网页没有意义，隐藏）
-    if (nativeVoice) {
-      quizExitBtn.classList.remove('hidden');
-      setupExitBtn.classList.remove('hidden');
-    }
+    // 「退出/退回」按钮始终显示（浏览器里点击 = 回启动页）
+    quizExitBtn.classList.remove('hidden');
+    setupExitBtn.classList.remove('hidden');
   }
 
   // 停止一切语音输出（浏览器与 APK 两条路径）
