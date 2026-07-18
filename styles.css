@@ -212,18 +212,25 @@ body {
   cursor: pointer;
 }
 
-/* 做题页的返回/退出文字按钮 */
-.text-btn {
-  width: auto;
-  border-radius: 12px;
-  padding: 0 14px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  white-space: nowrap;
-  flex-shrink: 0;
+/* 做题页底部操作栏 */
+.quiz-footer {
+  display: flex;
+  gap: 12px;
+  padding-top: 10px;
 }
 
-/* 返回=蓝、退出=红，一眼可辨 */
+/* 返回/退出文字按钮：返回=蓝、退出=红，一眼可辨 */
+.text-btn {
+  flex: 1;
+  height: 44px;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
 #quiz-back-btn {
   background: #e0e7ff;
   color: var(--primary);
