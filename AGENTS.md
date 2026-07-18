@@ -72,6 +72,13 @@ README.md           用户启动说明
 | 改 PWA 安装 | `setupInstallPrompt()`（app.js）、`manifest.json`、index.html 的 PWA meta、`#install-btn`；图标换图重导三个 PNG |
 | 改手机端布局 | styles.css 末尾的 `max-width: 760px / 480px` 媒体查询（角色区横排、控件紧凑） |
 
+## 线上部署（GitHub Pages）
+
+- 仓库：https://github.com/fanque123/math-practice-app （公开，main 分支）；Pages 从 `main` 根目录发布，线上地址 **https://fanque123.github.io/math-practice-app/**。
+- 本地已是 git 仓库（remote `origin` 指向上面的仓库，`.gitignore` 只排除 `server.log`）。**不要 `git commit/push` 或做任何 git 变更操作，除非用户明确要求。**
+- **推送凭据的坑**：本机凭据管理器里存的是另一个企业托管账号（Kitty-Fan_sgsdev，不能建公开仓库），直接 push 会被它顶掉报 `invalid credentials`。fanque123 的授权走 GitHub 设备流（client_id `178c6fc778ccc68e1d6a`，scope `repo`）拿临时令牌，推送时用 `git -c credential.helper= push "https://x-access-token:<TOKEN>@github.com/fanque123/math-practice-app.git" main:main`（令牌内联在 URL 里，不落 remote 配置、不存凭据管理器）。令牌失效就重新走一遍设备流。
+- **线上更新流程**：改代码 → 升 `service-worker.js` 的 `CACHE_NAME` → commit + push。Pages 构建约 1 分钟；用户端 SW 是网络优先，打开两次内自动拿到新版。
+
 ## 修改后验证（本会话工作目录在 C:/Windows/System32，项目实际路径要用绝对路径）
 
 1. `node --check "C:/Users/KITTY_FAN/Desktop/math-practice-app/app.js"`（语法检查）。
