@@ -217,7 +217,7 @@ body {
   display: flex;
   gap: 12px;
   padding-top: 10px;
-  padding-bottom: max(14px, env(safe-area-inset-bottom));
+  padding-bottom: max(40px, env(safe-area-inset-bottom));
 }
 
 /* 返回/退出文字按钮：返回=蓝、退出=红，一眼可辨 */
