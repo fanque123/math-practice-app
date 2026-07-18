@@ -43,6 +43,12 @@ public class MainActivity extends Activity {
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);   // localStorage 存设置项
         s.setAllowFileAccess(true);     // 加载打包的网页文件
+        s.setMediaPlaybackRequiresUserGesture(false); // 机器人音效台词自动播放
+        // Android 15 强制边到边布局：给状态栏/导航栏留内边距，避免顶部按钮被系统图标遮住
+        webView.setOnApplyWindowInsetsListener((v, insets) -> {
+            v.setPadding(0, insets.getSystemWindowInsetTop(), 0, insets.getSystemWindowInsetBottom());
+            return insets;
+        });
         webView.setWebViewClient(new WebViewClient());
         webView.addJavascriptInterface(new JsBridge(), "AndroidNative");
         webView.loadUrl("file:///android_asset/index.html");
