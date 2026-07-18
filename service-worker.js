@@ -1,4 +1,4 @@
-const CACHE_NAME = 'math-practice-v21';
+const CACHE_NAME = 'math-practice-v22';
 const ASSETS = [
   './',
   './index.html',
