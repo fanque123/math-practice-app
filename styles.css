@@ -1,0 +1,1209 @@
+:root {
+  --primary: #4f46e5;
+  --primary-dark: #4338ca;
+  --secondary: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --bg: #f3f4f6;
+  --card: #ffffff;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  --radius: 20px;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+/* 电路板纹理背景（纯 CSS，无图片） */
+body {
+  background-image:
+    radial-gradient(circle, rgba(79, 70, 229, 0.10) 1.5px, transparent 1.5px),
+    linear-gradient(rgba(79, 70, 229, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79, 70, 229, 0.05) 1px, transparent 1px);
+  background-size: 28px 28px, 28px 28px, 28px 28px;
+  background-position: 0 0, 0 0, 0 0;
+}
+
+#app {
+  height: 100%;
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  padding: 14px 20px;
+  overflow-y: auto;
+}
+
+.screen.active {
+  display: flex;
+}
+
+/* 设置页 */
+.setup-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 12px 18px;
+  box-shadow: var(--shadow);
+}
+
+.field-label {
+  display: block;
+  font-weight: 600;
+  margin: 8px 0 5px;
+  font-size: 0.95rem;
+}
+
+.field-label:first-child {
+  margin-top: 0;
+}
+
+.operation-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.op-tab {
+  flex: 1;
+  padding: 8px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.op-tab.active {
+  border-color: var(--primary);
+  background: #eef2ff;
+  color: var(--primary);
+}
+
+.difficulty-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.difficulty-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.difficulty-item input {
+  width: 18px;
+  height: 18px;
+  margin-right: 10px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.difficulty-item label {
+  flex: 1;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.difficulty-item.selected {
+  border-color: var(--primary);
+  background: #eef2ff;
+}
+
+.count-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.count-row input {
+  flex: 1;
+  padding: 8px;
+  font-size: 1.1rem;
+  text-align: center;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+.count-btn {
+  width: 52px;
+  height: 40px;
+  border: none;
+  border-radius: 12px;
+  background: #e5e7eb;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primary-btn {
+  width: 100%;
+  margin-top: 10px;
+  padding: 11px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #6366f1, var(--primary));
+  color: #fff;
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 0 var(--primary-dark), inset 0 2px 0 rgba(255, 255, 255, 0.25);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.primary-btn:active {
+  transform: translateY(6px);
+  box-shadow: 0 0 0 var(--primary-dark), inset 0 2px 0 rgba(255, 255, 255, 0.25);
+}
+
+.secondary-btn {
+  padding: 12px 20px;
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--primary);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 练习页 */
+.quiz-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: #e5e7eb;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+/* 电池充电式进度条 */
+.progress-bar {
+  flex: 1;
+  height: 18px;
+  background: #fff;
+  border: 2px solid var(--primary);
+  border-radius: 6px;
+  overflow: visible;
+  position: relative;
+  padding: 2px;
+}
+
+/* 电池正极凸起 */
+.progress-bar::after {
+  content: "";
+  position: absolute;
+  right: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 10px;
+  background: var(--primary);
+  border-radius: 0 3px 3px 0;
+}
+
+#progress-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 3px;
+  /* 逐格填充的电量格效果 */
+  background: repeating-linear-gradient(
+    90deg,
+    var(--secondary) 0,
+    var(--secondary) 12px,
+    #fff 12px,
+    #fff 15px
+  );
+  transition: width 0.3s ease;
+}
+
+#progress-text {
+  font-weight: 700;
+  color: var(--muted);
+  min-width: 52px;
+  text-align: right;
+}
+
+.quiz-body {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 28px;
+}
+
+.question-display {
+  font-size: 4rem;
+  font-weight: 800;
+  color: var(--text);
+  text-align: center;
+  margin-bottom: 20px;
+  letter-spacing: 4px;
+}
+
+.answer-feedback {
+  min-height: 40px;
+  font-size: 1.2rem;
+  color: var(--muted);
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.answer-feedback.correct {
+  color: var(--secondary);
+  font-weight: 700;
+}
+
+.answer-feedback.wrong {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.answer-feedback.listening {
+  color: var(--primary);
+}
+
+.answer-actions {
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.mic-btn {
+  width: 160px;
+  height: 160px;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), #7c3aed);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 12px 30px rgba(79, 70, 229, 0.35);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.mic-btn:active, .mic-btn.listening {
+  transform: scale(0.96);
+  box-shadow: 0 6px 18px rgba(79, 70, 229, 0.45);
+}
+
+.mic-icon {
+  font-size: 3rem;
+}
+
+#mic-text {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.or-divider {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.manual-form {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+}
+
+.manual-form input {
+  flex: 1;
+  padding: 14px;
+  font-size: 1.2rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 14px;
+  text-align: center;
+}
+
+/* 结果页 */
+.result-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 28px;
+  box-shadow: var(--shadow);
+  text-align: center;
+  width: 100%;
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+.result-card h2 {
+  margin: 0 0 20px;
+  font-size: 1.6rem;
+}
+
+.score-circle {
+  width: 160px;
+  height: 160px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: conic-gradient(var(--secondary) var(--score-deg), #e5e7eb 0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.score-circle::before {
+  content: "";
+  position: absolute;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+#score-text {
+  position: relative;
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+#score-message {
+  font-size: 1.1rem;
+  color: var(--muted);
+  margin-bottom: 20px;
+}
+
+.wrong-list {
+  text-align: left;
+  margin-bottom: 20px;
+}
+
+.wrong-list h3 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.wrong-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.wrong-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid #e5e7eb;
+  color: var(--muted);
+}
+
+.result-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.result-actions .primary-btn {
+  flex: 1;
+  margin-top: 0;
+}
+
+.result-actions .secondary-btn {
+  flex: 1;
+}
+
+/* 隐藏状态 */
+.hidden {
+  display: none !important;
+}
+
+/* ==================== 变形金刚「擎天柱」 ==================== */
+.robot-wrap {
+  position: relative;
+  flex-shrink: 0;
+  line-height: 0;
+}
+
+.robot-slot {
+  width: 120px;
+}
+
+.robot-lg .robot-slot {
+  width: 250px;
+}
+
+.robot-md .robot-slot {
+  width: 190px;
+}
+
+.robot-sm .robot-slot {
+  width: 140px;
+}
+
+.robot-slot svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* 设置页角色背后的能量光晕，更突出 */
+.setup-robot .robot-wrap::before {
+  content: "";
+  position: absolute;
+  inset: -20px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(29, 78, 216, 0.16), rgba(198, 40, 40, 0.08) 55%, transparent 72%);
+  z-index: -1;
+}
+
+/* 待机:身体边浮动边轻轻摇摆 */
+.robot-svg {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: robot-float 3s ease-in-out infinite;
+}
+
+/* 待机:眨眼 + 头盔耳翼摇摆 + 额头能量灯呼吸闪烁 */
+.robot-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: robot-blink 4s infinite;
+}
+
+.robot-antenna {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: robot-antenna-wiggle 2.4s ease-in-out infinite;
+}
+
+.robot-antenna-light {
+  animation: robot-pulse 1.6s ease-in-out infinite;
+}
+
+/* 排气管烟雾默认隐藏（欢呼时狂喷、低落时叹气才出现） */
+.robot-smoke {
+  display: none;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* 待机:两条手臂轻轻摆动 */
+.robot-arm-left,
+.robot-arm-right {
+  transform-box: fill-box;
+  transform-origin: 50% 15%;
+  animation: robot-arm-sway 3s ease-in-out infinite;
+}
+
+.robot-arm-right {
+  animation-delay: -1.5s;
+}
+
+/* 脚下阴影随动作缩放 */
+.robot-shadow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: robot-shadow-scale 3s ease-in-out infinite;
+}
+
+/* 状态表情部件默认隐藏 */
+.robot-eyes-happy,
+.robot-brows-sad,
+.robot-mouth-sad {
+  display: none;
+}
+
+/* 答对(夸张版):大力起跳带扭身 + 笑眼发光 + 双臂猛挥 + 排气管狂喷 */
+.robot-happy .robot-svg {
+  animation: prime-celebrate 0.7s ease-in-out infinite;
+}
+
+.robot-happy .robot-eyes-normal {
+  display: none;
+}
+
+.robot-happy .robot-eyes-happy {
+  display: block;
+  filter: drop-shadow(0 0 5px #7dd3fc);
+}
+
+.robot-happy .robot-arm-left {
+  animation: prime-cheer-left 0.7s ease-in-out infinite;
+  animation-delay: 0s;
+}
+
+.robot-happy .robot-arm-right {
+  animation: prime-cheer-right 0.7s ease-in-out infinite;
+  animation-delay: 0s;
+}
+
+.robot-happy .robot-shadow {
+  animation-duration: 0.7s;
+}
+
+.robot-happy .robot-smoke {
+  display: block;
+  animation: prime-smoke-burst 0.8s ease-out infinite;
+}
+
+.robot-happy .robot-smoke-right {
+  animation-delay: 0.4s;
+}
+
+.robot-happy .robot-antenna-light {
+  animation-duration: 0.5s;
+}
+
+/* 答错(夸张版):沉重地大幅摇晃 + 垂眉 + 双眼黯淡 + 耳翼耷拉 + 排气管叹气 */
+.robot-sad .robot-svg {
+  animation: prime-sad-sway 1.6s ease-in-out infinite;
+}
+
+.robot-sad .robot-eyes-normal {
+  opacity: 0.45;
+}
+
+.robot-sad .robot-mouth-normal,
+.robot-sad .robot-brows-normal {
+  display: none;
+}
+
+.robot-sad .robot-mouth-sad,
+.robot-sad .robot-brows-sad {
+  display: block;
+}
+
+.robot-sad .robot-arm-left,
+.robot-sad .robot-arm-right {
+  animation: none;
+  transform: rotate(4deg);
+}
+
+.robot-sad .robot-antenna {
+  animation: none;
+  transform: rotate(14deg);
+}
+
+.robot-sad .robot-antenna-light {
+  animation: none;
+  opacity: 0.3;
+}
+
+.robot-sad .robot-smoke {
+  display: block;
+  animation: prime-smoke-sigh 2s ease-out infinite;
+}
+
+.robot-sad .robot-smoke-right {
+  animation-delay: 1s;
+}
+
+/* 聆听中:歪头思考 + 眼珠转动 + 天线灯加速闪烁 */
+.robot-thinking .robot-svg {
+  animation: robot-think-tilt 2s ease-in-out infinite;
+}
+
+.robot-thinking .robot-eyes-normal {
+  animation: robot-look 1.2s ease-in-out infinite;
+}
+
+.robot-thinking .robot-antenna-light {
+  animation-duration: 0.6s;
+}
+
+/* 空闲小动作:单眼眨、挥手(由 JS 随机触发) */
+.robot-wink .robot-eye-left {
+  animation: none;
+  transform: scaleY(0.08);
+}
+
+.robot-wave-once .robot-arm-right {
+  animation: robot-wave 0.4s ease-in-out 3;
+  animation-delay: 0s;
+}
+
+@keyframes robot-float {
+  0%, 100% { transform: translateY(0) rotate(-1.5deg); }
+  50% { transform: translateY(-8px) rotate(1.5deg); }
+}
+
+@keyframes robot-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+
+@keyframes robot-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@keyframes robot-antenna-wiggle {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(7deg); }
+  75% { transform: rotate(-7deg); }
+}
+
+@keyframes robot-arm-sway {
+  0%, 100% { transform: rotate(5deg); }
+  50% { transform: rotate(-5deg); }
+}
+
+@keyframes robot-shadow-scale {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.82); opacity: 0.65; }
+}
+
+/* 欢呼:深蹲蓄力 → 高高跃起带扭身 → 重重落地回弹 */
+@keyframes prime-celebrate {
+  0%, 100% { transform: translateY(0) scale(1, 1) rotate(0); }
+  12% { transform: translateY(5px) scale(1.12, 0.86) rotate(0); }
+  34% { transform: translateY(-28px) scale(0.92, 1.1) rotate(-5deg); }
+  52% { transform: translateY(0) scale(1.06, 0.95) rotate(3deg); }
+  70% { transform: translateY(-15px) scale(0.96, 1.05) rotate(-2deg); }
+  86% { transform: translateY(0) scale(1, 1) rotate(0); }
+}
+
+/* 双臂高举猛挥 */
+@keyframes prime-cheer-left {
+  0%, 100% { transform: rotate(150deg); }
+  50% { transform: rotate(190deg); }
+}
+
+@keyframes prime-cheer-right {
+  0%, 100% { transform: rotate(-150deg); }
+  50% { transform: rotate(-190deg); }
+}
+
+/* 欢呼时排气管猛烈喷烟 */
+@keyframes prime-smoke-burst {
+  0% { transform: translateY(0) scale(0.5); opacity: 0.95; }
+  100% { transform: translateY(-22px) scale(1.9); opacity: 0; }
+}
+
+/* 低落时排气管缓缓叹气 */
+@keyframes prime-smoke-sigh {
+  0% { transform: translateY(0) scale(0.4); opacity: 0.6; }
+  100% { transform: translateY(-12px) scale(1.1); opacity: 0; }
+}
+
+/* 低落:左右大幅沉重摇晃,身体下沉 */
+@keyframes prime-sad-sway {
+  0%, 100% { transform: rotate(-11deg) translateY(3px); }
+  25% { transform: rotate(-6deg) translateY(7px); }
+  50% { transform: rotate(-11deg) translateY(4px); }
+  75% { transform: rotate(-14deg) translateY(8px); }
+}
+
+@keyframes robot-think-tilt {
+  0%, 100% { transform: rotate(3deg); }
+  50% { transform: rotate(7deg); }
+}
+
+@keyframes robot-wave {
+  0%, 100% { transform: rotate(0); }
+  50% { transform: rotate(-30deg); }
+}
+
+@keyframes robot-look {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+/* 气泡(小三角尾巴朝向机器人) */
+.robot-bubble {
+  background: #fff;
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  padding: 8px 14px;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--text);
+  position: relative;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+}
+
+.robot-bubble::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-right: 8px solid var(--primary);
+}
+
+/* 设置页:左边角色、右边控件的两栏布局 */
+.setup-layout {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  flex: 1;
+}
+
+.setup-side {
+  width: 300px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  /* 气泡在上、按钮在下，整列稍微上移，让角色图片本身看起来垂直居中 */
+  margin-top: -16px;
+}
+
+.setup-robot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.setup-bubble {
+  max-width: 240px;
+  text-align: center;
+}
+
+/* 气泡在角色头顶,小三角朝下 */
+.setup-bubble::before {
+  left: 50%;
+  top: auto;
+  bottom: -8px;
+  transform: translateX(-50%);
+  border-top: 8px solid var(--primary);
+  border-bottom: none;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+}
+
+.setup-card {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-btn {
+  margin-top: 4px;
+}
+
+/* 设置/安装按钮行 */
+.side-btn-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* 练习页:左边角色、右边题目 */
+.quiz-side {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.quiz-bubble {
+  max-width: 200px;
+  text-align: center;
+}
+
+/* 气泡在角色下方,小三角朝上 */
+.quiz-bubble::before {
+  left: 50%;
+  top: -8px;
+  transform: translateX(-50%);
+  border-bottom: 8px solid var(--primary);
+  border-top: none;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+}
+
+.quiz-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.result-robot-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+/* 满分彩带 */
+.confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 5;
+}
+
+.confetti i {
+  position: absolute;
+  top: -14px;
+  width: 8px;
+  height: 13px;
+  border-radius: 2px;
+  animation: confetti-fall linear forwards;
+}
+
+@keyframes confetti-fall {
+  to {
+    transform: translateY(105vh) rotate(720deg);
+    opacity: 0.7;
+  }
+}
+
+/* ==================== 设置弹窗 ==================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(31, 41, 55, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  padding: 20px;
+}
+
+.modal-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 24px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: var(--shadow);
+}
+
+.modal-card h2 {
+  margin: 0 0 8px;
+  font-size: 1.4rem;
+  color: var(--primary);
+}
+
+.modal-card input[type="text"],
+.modal-card input[type="number"] {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 1.05rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.modal-actions .primary-btn,
+.modal-actions .secondary-btn {
+  flex: 1;
+  margin-top: 0;
+}
+
+/* ==================== 公主模式 ==================== */
+body.mode-princess {
+  --primary: #ec4899;
+  --primary-dark: #be185d;
+  background-color: #fdf2f8;
+  background-image: radial-gradient(circle, rgba(236, 72, 153, 0.10) 1.5px, transparent 1.5px);
+  background-size: 28px 28px;
+}
+
+body.mode-princess .primary-btn {
+  background: linear-gradient(180deg, #f472b6, var(--primary));
+}
+
+body.mode-princess .mic-btn {
+  background: linear-gradient(135deg, var(--primary), #a855f7);
+  box-shadow: 0 12px 30px rgba(236, 72, 153, 0.35);
+}
+
+body.mode-princess .op-tab.active,
+body.mode-princess .difficulty-item.selected {
+  background: #fce7f3;
+}
+
+body.mode-princess .setup-robot .robot-wrap::before {
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.16), rgba(251, 207, 232, 0.25) 55%, transparent 72%);
+}
+
+/* 花园背景（JS 随机撒花，轻轻摇摆） */
+#flower-field {
+  display: none;
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+body.mode-princess #flower-field {
+  display: block;
+}
+
+#flower-field span {
+  position: absolute;
+  animation: flower-sway 4s ease-in-out infinite;
+}
+
+@keyframes flower-sway {
+  0%, 100% { transform: rotate(-10deg) translateY(0); }
+  50% { transform: rotate(10deg) translateY(-8px); }
+}
+
+/* 公主答对:提着裙子原地转圈 */
+body.mode-princess .robot-happy .robot-svg {
+  animation: princess-spin 1s ease-in-out infinite;
+}
+
+@keyframes princess-spin {
+  0% { transform: rotate(0deg) translateY(0); }
+  30% { transform: rotate(180deg) translateY(-16px); }
+  60% { transform: rotate(360deg) translateY(0); }
+  80% { transform: rotate(360deg) translateY(-7px); }
+  100% { transform: rotate(360deg) translateY(0); }
+}
+
+/* 公主没有排气管,低落时不叹气 */
+body.mode-princess .robot-sad .robot-smoke {
+  display: none;
+}
+
+/* ==================== 手机端布局 ==================== */
+/* 中窄屏:两栏收为单栏,角色区横排 */
+@media (max-width: 760px) {
+  .screen {
+    padding: 10px 14px;
+    /* 适配 iPhone 底部横条等安全区 */
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .setup-layout {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* 角色区:机器人与气泡横向排列,按钮换行居中 */
+  .setup-side {
+    width: 100%;
+    margin-top: 0;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .setup-robot {
+    order: 1;
+  }
+
+  .setup-bubble {
+    order: 2;
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+    text-align: left;
+  }
+
+  /* 气泡在机器人右侧,小三角朝左 */
+  .setup-bubble::before {
+    left: -8px;
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%);
+    border-top: 7px solid transparent;
+    border-bottom: 7px solid transparent;
+    border-right: 8px solid var(--primary);
+    border-left: none;
+  }
+
+  .side-btn-row {
+    order: 3;
+    width: 100%;
+  }
+
+  .setup-card {
+    padding: 10px 14px;
+  }
+
+  .quiz-header {
+    margin-bottom: 10px;
+  }
+
+  /* 练习页:角色横排在题目上方 */
+  .quiz-body {
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+
+  .quiz-side {
+    flex-direction: row;
+    gap: 10px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .quiz-bubble {
+    max-width: 240px;
+    text-align: left;
+  }
+
+  /* 气泡在机器人右侧,小三角朝左 */
+  .quiz-bubble::before {
+    left: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-right: 8px solid var(--primary);
+    border-top: 7px solid transparent;
+    border-bottom: 7px solid transparent;
+    border-left: none;
+  }
+
+  .question-display {
+    font-size: 2.7rem;
+    margin-bottom: 8px;
+    letter-spacing: 2px;
+  }
+
+  .answer-feedback {
+    font-size: 1.05rem;
+    min-height: 28px;
+    margin-bottom: 12px;
+  }
+
+  .answer-actions {
+    gap: 12px;
+  }
+
+  .mic-btn {
+    width: 108px;
+    height: 108px;
+  }
+
+  .mic-icon {
+    font-size: 2.2rem;
+  }
+
+  .manual-form input {
+    padding: 10px;
+    font-size: 1.05rem;
+  }
+
+  /* 结果页紧凑 */
+  .result-card {
+    padding: 18px 16px;
+  }
+
+  .result-card h2 {
+    font-size: 1.3rem;
+    margin-bottom: 10px;
+  }
+
+  .score-circle {
+    width: 128px;
+    height: 128px;
+  }
+
+  .score-circle::before {
+    width: 104px;
+    height: 104px;
+  }
+
+  #score-text {
+    font-size: 1.5rem;
+  }
+
+  .wrong-list ul {
+    max-height: 120px;
+  }
+
+  .modal-card {
+    padding: 18px 16px;
+  }
+}
+
+@media (max-height: 600px) and (min-width: 761px) {
+  .question-display {
+    font-size: 3rem;
+  }
+  .mic-btn {
+    width: 130px;
+    height: 130px;
+  }
+  .robot-sm .robot-slot {
+    width: 100px;
+  }
+  .quiz-side {
+    gap: 8px;
+  }
+}
+
+/* 窄屏手机适当收小,防止机器人和气泡挤出一行 */
+@media (max-width: 480px) {
+  .robot-lg .robot-slot {
+    width: 118px;
+  }
+  .robot-md .robot-slot {
+    width: 130px;
+  }
+  .robot-sm .robot-slot {
+    width: 88px;
+  }
+  .op-tab {
+    padding: 7px 4px;
+    font-size: 0.95rem;
+  }
+  .difficulty-item {
+    padding: 5px 10px;
+  }
+  .count-btn {
+    height: 38px;
+  }
+  .primary-btn {
+    padding: 10px;
+  }
+}

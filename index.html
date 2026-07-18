@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>口算机器人</title>
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="口算机器人">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="icon-192.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+</head>
+<body>
+  <!-- 公主模式的花园背景（JS 填充花朵，仅公主模式显示） -->
+  <div id="flower-field" aria-hidden="true"></div>
+
+  <div id="app">
+    <!-- 设置界面：左边角色，右边控件（题型起，无标题栏） -->
+    <section id="setup-screen" class="screen active">
+      <div class="setup-layout">
+        <div class="setup-side">
+          <div class="robot-bubble setup-bubble">你好，我是擎天柱！<br>选好题目，和我一起战斗吧！</div>
+          <div class="setup-robot">
+            <div class="robot-wrap robot-lg">
+              <div class="robot-slot"></div>
+            </div>
+          </div>
+          <div class="side-btn-row">
+            <button id="settings-btn" class="secondary-btn settings-btn" type="button">⚙ 设置</button>
+            <button id="install-btn" class="secondary-btn settings-btn hidden" type="button">📲 安装App</button>
+          </div>
+        </div>
+
+        <div class="setup-card">
+          <label class="field-label">题型</label>
+          <div class="operation-tabs">
+            <button type="button" class="op-tab active" data-op="multiply">乘法</button>
+            <button type="button" class="op-tab" data-op="add">加法</button>
+            <button type="button" class="op-tab" data-op="subtract">减法</button>
+            <button type="button" class="op-tab" data-op="divide">除法</button>
+          </div>
+
+          <label class="field-label">难度</label>
+          <div id="difficulty-list" class="difficulty-list">
+            <!-- 动态生成 -->
+          </div>
+
+          <label class="field-label" for="question-count">题目数量</label>
+          <div class="count-row">
+            <button type="button" class="count-btn" data-delta="-5">-5</button>
+            <input id="question-count" type="number" min="1" max="50" value="10" inputmode="numeric">
+            <button type="button" class="count-btn" data-delta="5">+5</button>
+          </div>
+
+          <button id="start-btn" class="primary-btn">开始练习</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 练习界面：左边角色，右边题目 -->
+    <section id="quiz-screen" class="screen">
+      <div class="quiz-header">
+        <button id="quit-btn" class="icon-btn" title="退出">✕</button>
+        <div class="progress-bar"><div id="progress-fill"></div></div>
+        <span id="progress-text">1 / 10</span>
+      </div>
+
+      <div class="quiz-body">
+        <div class="quiz-side">
+          <div class="robot-wrap robot-sm" id="quiz-robot">
+            <div class="robot-slot"></div>
+          </div>
+          <div class="robot-bubble quiz-bubble" id="quiz-bubble">准备好了吗？</div>
+        </div>
+        <div class="quiz-main">
+          <div id="question-display" class="question-display">--</div>
+          <div id="answer-feedback" class="answer-feedback">准备好了吗？</div>
+
+          <div class="answer-actions">
+            <button id="listen-btn" class="mic-btn">
+              <span class="mic-icon">🎤</span>
+              <span id="mic-text">点击重说</span>
+            </button>
+            <div class="or-divider">或</div>
+            <form id="manual-form" class="manual-form">
+              <input id="manual-answer" type="number" placeholder="输入答案" inputmode="numeric" autocomplete="off">
+              <button type="submit" class="secondary-btn">提交</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 结果界面 -->
+    <section id="result-screen" class="screen">
+      <div class="confetti" id="confetti"></div>
+      <div class="result-card">
+        <div class="result-robot-row">
+          <div class="robot-wrap robot-md" id="result-robot">
+            <div class="robot-slot"></div>
+          </div>
+          <div class="robot-bubble" id="result-bubble">练习完成！</div>
+        </div>
+        <h2>练习完成！</h2>
+        <div id="score-circle" class="score-circle">
+          <span id="score-text">0 / 0</span>
+        </div>
+        <p id="score-message">继续加油！</p>
+
+        <div id="wrong-list" class="wrong-list">
+          <h3>错题回顾</h3>
+          <ul id="wrong-items"></ul>
+        </div>
+
+        <div class="result-actions">
+          <button id="restart-btn" class="primary-btn">再练一次</button>
+          <button id="home-btn" class="secondary-btn">返回首页</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 设置弹窗（必须在 app.js 之前，脚本加载时会立即按 id 取这些元素） -->
+  <div id="settings-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h2>设置</h2>
+
+      <label class="field-label">模式</label>
+      <div class="operation-tabs">
+        <button type="button" class="op-tab settings-mode-tab active" data-mode="optimus">🤖 擎天柱</button>
+        <button type="button" class="op-tab settings-mode-tab" data-mode="princess">👸 公主</button>
+      </div>
+
+      <label class="field-label" for="settings-praise">答对时说的话</label>
+      <input id="settings-praise" type="text" maxlength="20" autocomplete="off">
+
+      <label class="field-label" for="settings-encourage">答错时说的话</label>
+      <input id="settings-encourage" type="text" maxlength="20" autocomplete="off">
+
+      <label class="field-label" for="settings-count">每次默认题数</label>
+      <input id="settings-count" type="number" min="1" max="50" inputmode="numeric">
+
+      <div class="modal-actions">
+        <button id="settings-cancel" class="secondary-btn" type="button">取消</button>
+        <button id="settings-save" class="primary-btn" type="button">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
