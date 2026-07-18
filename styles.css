@@ -212,11 +212,12 @@ body {
   cursor: pointer;
 }
 
-/* 做题页底部操作栏 */
+/* 做题页底部操作栏（抬高一段，避开手机系统导航条/手势条） */
 .quiz-footer {
   display: flex;
   gap: 12px;
   padding-top: 10px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
 }
 
 /* 返回/退出文字按钮：返回=蓝、退出=红，一眼可辨 */
