@@ -31,6 +31,7 @@ public class MainActivity extends Activity {
     private volatile boolean ttsReady = false;
     private SpeechRecognizer recognizer;
     private boolean wantStartListening = false;
+    private boolean resultsDelivered = false; // 已出结果的会话不再上报错误（停识别会补发 ERROR_CLIENT）
     private final Handler main = new Handler(Looper.getMainLooper());
     private static final int REQ_MIC = 1;
 
@@ -106,6 +107,11 @@ public class MainActivity extends Activity {
                 }
             });
         }
+
+        @JavascriptInterface
+        public void exit() {
+            main.post(() -> finish()); // 网页的「退出/退回」按钮：关闭整个应用
+        }
     }
 
     private void speakInternal(String text, float rate, float pitch, boolean retried) {
@@ -140,6 +146,7 @@ public class MainActivity extends Activity {
                 .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
                 .putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3);
         try {
+            resultsDelivered = false;
             recognizer.cancel(); // 清掉可能残留的上一次会话
             recognizer.startListening(intent);
         } catch (Exception e) {
@@ -170,9 +177,11 @@ public class MainActivity extends Activity {
         @Override public void onBufferReceived(byte[] buffer) {}
         @Override public void onEndOfSpeech() {}
         @Override public void onError(int error) {
+            if (resultsDelivered) return; // 已经判完题，停止识别补发的错误不再上报
             js("__nativeRecogError(" + error + ")");
         }
         @Override public void onResults(Bundle results) {
+            resultsDelivered = true;
             ArrayList<String> list = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
             String text = (list == null || list.isEmpty()) ? "" : list.get(0);
             js("__nativeRecogResult(" + jsStr(text) + ", true)");
