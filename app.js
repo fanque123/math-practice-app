@@ -327,6 +327,28 @@
     initSpeech();
     registerServiceWorker();
     setupInstallPrompt();
+    checkSpeechSupport();
+  }
+
+  // ==================== 发声能力自检 ====================
+  // 微信内置浏览器、部分国产 ROM 自带浏览器无法正常调用语音朗读，
+  // 与其静默无声，不如直接在气泡里告诉用户怎么解决
+  function checkSpeechSupport() {
+    if (/micromessenger/i.test(navigator.userAgent)) {
+      setupBubble.innerHTML = '微信里打开没有声音🔇<br>请点右上角「···」→「在浏览器打开」，用 Chrome 或 Edge 打开本页';
+      return;
+    }
+    if (!('speechSynthesis' in window)) {
+      setupBubble.innerHTML = '当前浏览器不支持语音朗读🔇<br>建议用 Chrome 或 Edge 打开本页';
+      return;
+    }
+    // 语音列表异步加载，2.5 秒后仍为空基本就是发不了声的环境
+    setTimeout(() => {
+      refreshVoices();
+      if (cachedVoices.length === 0) {
+        setupBubble.innerHTML = '当前浏览器可能无法发声🔇<br>建议用 Chrome 或 Edge 打开，并把媒体音量调大';
+      }
+    }, 2500);
   }
 
   // ==================== PWA 安装 ====================
@@ -748,9 +770,18 @@
       utter.lang = bestVoice.lang;
     }
 
-    utter.onend = () => {
+    // 部分手机浏览器（小米/微信内置等）onend、onerror 都可能不触发，
+    // 按文本长度估算一个兜底时间，到点强制继续流程，防止卡住
+    let ended = false;
+    const finish = () => {
+      if (ended) return;
+      ended = true;
+      clearTimeout(watchdog);
       if (onEnd) onEnd();
     };
+    const watchdog = setTimeout(finish, Math.min(3000 + text.length * 350, 12000));
+    utter.onend = finish;
+    utter.onerror = finish;
 
     window.speechSynthesis.speak(utter);
   }
