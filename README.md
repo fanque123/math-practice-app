@@ -35,7 +35,7 @@ node server.js
 
 ## 装到手机上当 App 用（可分享给朋友）
 
-**方式一 · APK 直装（推荐）**：手机浏览器打开 https://github.com/fanque123/math-practice-app/releases/download/v1.0/math-practice-v1.0.apk 直接下载安装，离线可用、无任何权限（注意：APK 里语音答题不可用，只能手动输入）。
+**方式一 · APK 直装（推荐）**：手机浏览器打开 https://github.com/fanque123/math-practice-app/releases/download/v1.0/math-practice-v1.0.apk 直接下载安装，离线可用（朗读和语音答题都正常，仅需麦克风权限）。
 **方式二 · 网页版**：https://fanque123.github.io/math-practice-app/ —— 手机浏览器打开后「添加到主屏幕」。详细步骤和传文件避坑看 `安装分享指南.md`。同一 WiFi 下也可以直接手机访问启动时打印的局域网地址快速试玩。
 
 ## 直接使用（可能每次都要点麦克风权限）
