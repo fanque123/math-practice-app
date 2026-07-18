@@ -334,6 +334,7 @@
   // 微信内置浏览器、部分国产 ROM 自带浏览器无法正常调用语音朗读，
   // 与其静默无声，不如直接在气泡里告诉用户怎么解决
   function checkSpeechSupport() {
+    if (nativeVoice) return; // APK 内由系统 TTS/识别器接管，不依赖浏览器能力
     if (/micromessenger/i.test(navigator.userAgent)) {
       setupBubble.innerHTML = '微信里打开没有声音🔇<br>请点右上角「···」→「在浏览器打开」，用 Chrome 或 Edge 打开本页';
       return;
@@ -567,6 +568,49 @@
   }
 
   // ==================== 语音 ====================
+  // 安卓 APK 原生桥：WebView 不支持 Web Speech API，MainActivity 会注入
+  // window.AndroidNative，朗读走系统 TTS、识别走 SpeechRecognizer；
+  // 浏览器里没有这个对象，一切走下面的网页逻辑
+  const nativeVoice = (typeof window.AndroidNative !== 'undefined') ? window.AndroidNative : null;
+
+  // 原生 TTS 说完一句话后的回调入口（MainActivity 在 onDone 时调 window.__nativeTtsDone()）
+  let nativeTtsDoneCb = null;
+  window.__nativeTtsDone = function () {
+    const cb = nativeTtsDoneCb;
+    nativeTtsDoneCb = null;
+    if (cb) cb();
+  };
+
+  // 造一个和 Web Speech Recognition 接口一致的原生识别适配器，
+  // 让 initSpeech() 后面的处理器赋值两种后端完全共用
+  function createNativeRecognition() {
+    const rec = {
+      lang: 'zh-CN',
+      interimResults: true,
+      maxAlternatives: 3,
+      onstart: null, onend: null, onresult: null, onerror: null,
+      start() { nativeVoice.startListening(); },
+      stop() { nativeVoice.stopListening(); },
+    };
+    window.__nativeRecogStart = () => { if (rec.onstart) rec.onstart(); };
+    window.__nativeRecogEnd = () => { if (rec.onend) rec.onend(); };
+    window.__nativeRecogError = (code) => {
+      // SpeechRecognizer 错误码：7=没听清 6=说话超时 9=无麦克风权限
+      const map = { 7: 'no-speech', 6: 'no-speech', 9: 'not-allowed' };
+      if (rec.onerror) rec.onerror({ error: map[code] || 'native-' + code });
+      if (rec.onend) rec.onend();
+    };
+    window.__nativeRecogResult = (text, isFinal) => {
+      if (!rec.onresult) return;
+      const result = [{ transcript: text }];
+      result.isFinal = isFinal;
+      result.length = 1;
+      rec.onresult({ resultIndex: 0, results: [result] });
+    };
+    return rec;
+  }
+
+
   // 语音列表缓存：部分浏览器首次 getVoices() 返回空（语音异步加载），
   // 不预热的话第一题会用呆板的默认声音读，后面才变自然语音
   let cachedVoices = [];
@@ -626,26 +670,32 @@
   }
 
   function initSpeech() {
-    // 语音合成
-    if (!('speechSynthesis' in window)) {
-      console.warn('浏览器不支持语音朗读');
+    // 语音合成（APK 里由系统 TTS 接管，跳过浏览器语音预热）
+    if (nativeVoice) {
+      recognition = createNativeRecognition();
     } else {
-      // 页面加载就预热语音列表，并监听加载完成事件，避免第一题用到默认声音
-      refreshVoices();
-      window.speechSynthesis.addEventListener('voiceschanged', refreshVoices);
+      if (!('speechSynthesis' in window)) {
+        console.warn('浏览器不支持语音朗读');
+      } else {
+        // 页面加载就预热语音列表，并监听加载完成事件，避免第一题用到默认声音
+        refreshVoices();
+        window.speechSynthesis.addEventListener('voiceschanged', refreshVoices);
+      }
+
+      // 语音识别
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        recognition = new SpeechRecognition();
+        recognition.lang = 'zh-CN';
+        recognition.interimResults = true; // 边说边出结果，不等静音超时
+        recognition.maxAlternatives = 3;
+      }
     }
 
-    // 语音识别
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
+    if (!recognition) {
       answerFeedback.textContent = '当前浏览器不支持语音识别，请手动输入答案。';
       return;
     }
-
-    recognition = new SpeechRecognition();
-    recognition.lang = 'zh-CN';
-    recognition.interimResults = true; // 边说边出结果，不等静音超时
-    recognition.maxAlternatives = 3;
 
     recognition.onstart = () => {
       isListening = true;
@@ -746,29 +796,13 @@
   }
 
   function speak(text, onEnd, opts) {
-    if (!('speechSynthesis' in window)) {
-      if (onEnd) onEnd();
-      return;
-    }
-
-    refreshVoices(); // 每次说话前再试一次，语音加载好后立即换用自然语音
-
     // 说话前先停止识别，避免录到机器声
     if (recognition && isListening) {
       try { recognition.stop(); } catch (e) {}
     }
 
-    window.speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = 'zh-CN';
-    utter.rate = (opts && opts.rate) || 0.88;
-    utter.pitch = (opts && opts.pitch) || 1.05;
-
-    const bestVoice = getBestChineseVoice(opts && opts.male);
-    if (bestVoice) {
-      utter.voice = bestVoice;
-      utter.lang = bestVoice.lang;
-    }
+    const rate = (opts && opts.rate) || 0.88;
+    const pitch = (opts && opts.pitch) || 1.05;
 
     // 部分手机浏览器（小米/微信内置等）onend、onerror 都可能不触发，
     // 按文本长度估算一个兜底时间，到点强制继续流程，防止卡住
@@ -780,6 +814,33 @@
       if (onEnd) onEnd();
     };
     const watchdog = setTimeout(finish, Math.min(3000 + text.length * 350, 12000));
+
+    // APK 内：走系统 TTS（MainActivity 说完会调 __nativeTtsDone → finish）
+    if (nativeVoice) {
+      nativeTtsDoneCb = finish;
+      nativeVoice.speak(text, rate, pitch);
+      return;
+    }
+
+    if (!('speechSynthesis' in window)) {
+      finish();
+      return;
+    }
+
+    refreshVoices(); // 每次说话前再试一次，语音加载好后立即换用自然语音
+
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'zh-CN';
+    utter.rate = rate;
+    utter.pitch = pitch;
+
+    const bestVoice = getBestChineseVoice(opts && opts.male);
+    if (bestVoice) {
+      utter.voice = bestVoice;
+      utter.lang = bestVoice.lang;
+    }
+
     utter.onend = finish;
     utter.onerror = finish;
 
@@ -789,6 +850,7 @@
   // 角色的夸奖/鼓励用各自嗓音说出（见 CHARACTERS[*].voice，由 speak() 的 opts 传入）
 
   async function ensureMicStream() {
+    if (nativeVoice) return; // APK 里麦克风由原生识别器申请管理，无需网页占用
     if (micStream) return;
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
     try {
