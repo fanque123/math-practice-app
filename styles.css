@@ -220,8 +220,20 @@ body {
   font-size: 0.9rem;
   font-weight: 600;
   white-space: nowrap;
-  color: var(--text);
   flex-shrink: 0;
+}
+
+/* 返回=蓝、退出=红，一眼可辨 */
+#quiz-back-btn {
+  background: #e0e7ff;
+  color: var(--primary);
+}
+
+#quiz-exit-btn,
+#setup-exit-btn {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fca5a5;
 }
 
 /* 电池充电式进度条 */
