@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- 无任何权限申请：纯离线运行，语音朗读走系统 TTS 不需要权限 -->
+    <!-- 麦克风：原生语音识别用（首次语音答题时弹窗申请） -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- Android 11+ 包可见性：绑定系统 TTS 和语音识别服务必须声明 -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
+
     <application
         android:label="口算机器人"
         android:icon="@mipmap/ic_launcher"
