@@ -19,10 +19,10 @@
 ```
 index.html          三个界面（setup/quiz/result）的 DOM；设置页无标题栏、左角色右控件两栏布局（右侧卡片从题型开始，角色下方 .side-btn-row 内有设置按钮 #settings-btn 和安装按钮 #install-btn）；含题型按钮（.op-tab[data-op]）、机器人插槽 .robot-slot 和气泡、公主模式花园容器 #flower-field、设置弹窗 #settings-modal（内含模式切换 .settings-mode-tab，**必须在 `<script>` 之前**，app.js 立即执行按 id 取元素）；head 里有 PWA/iOS meta（theme-color、apple-touch-icon 等）；script 只引 app.js
 styles.css          全部样式（CSS 变量定义主题色；含角色动画、电路纹理背景、电池进度条、公主模式粉色主题与花园、两栏布局、设置弹窗）；手机端媒体查询在文件末尾（≤760px 单栏：角色区横排、气泡三角改朝左、控件紧凑、safe-area 适配；≤480px 再收小机器人与按钮）
-app.js              全部逻辑（1296 行，单 IIFE，下方详解）
+app.js              全部逻辑（1294 行，单 IIFE，下方详解）
 manifest.json       PWA 清单（名称「口算机器人」，display standalone、orientation portrait），图标是 PNG 文件（192/512，purpose any + maskable）
 icon-192.png / icon-512.png / apple-touch-icon.png   PWA 与 iOS 主屏幕图标（擎天柱头盔，PIL 生成，要换风格重新画图导出同名文件即可）
-service-worker.js   离线缓存（**网络优先**：先 fetch 最新代码并写缓存，断网才回退缓存——避免旧缓存导致"改了不生效"），缓存名 math-practice-v17（改任何前端文件都要升这个版本号）
+service-worker.js   离线缓存（**网络优先**：先 fetch 最新代码并写缓存，断网才回退缓存——避免旧缓存导致"改了不生效"），缓存名 math-practice-v18（改任何前端文件都要升这个版本号）
 server.js           Node 静态服务器，PORT/HOST 环境变量可改（默认 8000 / 0.0.0.0，监听所有网卡并在启动时打印局域网 IP，方便手机同 WiFi 试玩）
 start-server.bat    Windows 一键启动：先开浏览器 http://localhost:8000 再 node server.js
 server.log          服务器运行日志（运行时产物，勿提交逻辑依赖它）
