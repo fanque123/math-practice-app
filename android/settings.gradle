@@ -16,6 +16,9 @@ dependencyResolutionManagement {
         maven { url 'https://maven.aliyun.com/repository/central' }
         google()
         mavenCentral()
+        // sherpa-onnx 的 AAR 在镜像拉不到，放 app/libs/ 本地引用
+        //（不能配在 app/build.gradle：模块级 repositories 会整体覆盖这里的仓库，导致 aapt2 都拉不到）
+        flatDir { dirs 'app/libs' }
     }
 }
 rootProject.name = "math-practice"

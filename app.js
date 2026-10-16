@@ -23,6 +23,7 @@
       { key: 's5', label: '3 位数 - 3 位数', desc: '例如 345 - 123' },
     ],
     divide: [
+      { key: 'd0', label: '除法口诀', desc: '乘法口诀范围内的除法，例如 42 ÷ 6' },
       { key: 'd1', label: '2 位数 ÷ 1 位数', desc: '例如 56 ÷ 7' },
       { key: 'd2', label: '3 位数 ÷ 1 位数', desc: '例如 156 ÷ 3' },
       { key: 'd3', label: '3 位数 ÷ 2 位数', desc: '例如 288 ÷ 12' },
@@ -235,8 +236,8 @@
   <path class="robot-mouth-normal" d="M72 57 Q80 65 88 57" stroke="#e11d63" stroke-width="3" fill="none" stroke-linecap="round"/>
   <path class="robot-mouth-sad" d="M74 62 Q80 57 86 62" stroke="#e11d63" stroke-width="3" fill="none" stroke-linecap="round"/>
 </svg>`,
-      praise: '真棒！',
-      encourage: '加油！',
+      praise: '真棒真棒',
+      encourage: '加油加油',
       greeting: '你好，我是小公主！<br>选好题目，我们开始吧！',
       voice: { male: false, rate: 0.95, pitch: 1.3 }, // 甜美公主腔
     },
@@ -452,11 +453,11 @@
   // ==================== 设置 ====================
   const SETTINGS_KEY = 'math-practice-settings';
 
-  // 读取设置；无存档或字段缺失时回退到默认值（默认模式=擎天柱、默认题数=30、台词=角色自带）
+  // 读取设置；无存档或字段缺失时回退到默认值（默认模式=擎天柱、默认题数=20、台词=角色自带）
   function loadSettings() {
     const defaults = {
       mode: 'optimus',
-      defaultCount: 30,
+      defaultCount: 20,
       lines: {
         optimus: { praise: CHARACTERS.optimus.praise, encourage: CHARACTERS.optimus.encourage },
         princess: { praise: CHARACTERS.princess.praise, encourage: CHARACTERS.princess.encourage },
@@ -468,7 +469,7 @@
       const saved = JSON.parse(raw);
       return {
         mode: saved.mode === 'princess' ? 'princess' : 'optimus',
-        defaultCount: Math.max(1, Math.min(50, parseInt(saved.defaultCount, 10) || 30)),
+        defaultCount: Math.max(1, Math.min(50, parseInt(saved.defaultCount, 10) || 20)),
         lines: {
           optimus: { ...defaults.lines.optimus, ...(saved.lines && saved.lines.optimus) },
           princess: { ...defaults.lines.princess, ...(saved.lines && saved.lines.princess) },
@@ -616,7 +617,7 @@
     const rec = {
       lang: 'zh-CN',
       interimResults: true,
-      maxAlternatives: 3,
+      maxAlternatives: 10,
       onstart: null, onend: null, onresult: null, onerror: null,
       start() { nativeVoice.startListening(); },
       stop() { nativeVoice.stopListening(); },
@@ -629,11 +630,20 @@
       if (rec.onerror) rec.onerror({ error: map[code] || 'native-' + code });
       if (rec.onend) rec.onend();
     };
-    window.__nativeRecogResult = (text, isFinal) => {
+    // 原生端把多候选以 JSON 数组传过来，网页端解析后统一交给 onresult 处理
+    window.__nativeRecogResult = (alternativesJson, isFinal) => {
       if (!rec.onresult) return;
-      const result = [{ transcript: text }];
+      let alts;
+      try {
+        alts = JSON.parse(alternativesJson);
+      } catch (e) {
+        // 兼容旧版 APK 只传单个字符串的情况
+        alts = [String(alternativesJson)];
+      }
+      if (!Array.isArray(alts) || alts.length === 0) alts = [''];
+      const result = alts.map((t) => ({ transcript: t }));
       result.isFinal = isFinal;
-      result.length = 1;
+      result.length = result.length;
       rec.onresult({ resultIndex: 0, results: [result] });
     };
     return rec;
@@ -698,6 +708,17 @@
     }
   }
 
+  // 生成 JSGF 数字语法，提示识别器优先匹配数字串（浏览器支持有限，失败不影响）
+  function buildNumberGrammar() {
+    const digits = '零 | 一 | 二 | 两 | 三 | 四 | 五 | 六 | 七 | 八 | 九';
+    const units = '十 | 百 | 千 | 万';
+    return `#JSGF V1.0; grammar numbers; public <number> = <digitseq> | <unitnum>;
+      <digit> = ${digits};
+      <unit> = ${units};
+      <digitseq> = <digit>+;
+      <unitnum> = <digitseq>? <unit> <digitseq>?;`;
+  }
+
   function initSpeech() {
     // 语音合成（APK 里由系统 TTS 接管，跳过浏览器语音预热）
     if (nativeVoice) {
@@ -716,8 +737,19 @@
       if (SpeechRecognition) {
         recognition = new SpeechRecognition();
         recognition.lang = 'zh-CN';
-        recognition.interimResults = true; // 边说边出结果，不等静音超时
-        recognition.maxAlternatives = 3;
+        recognition.interimResults = true; // 边说边出中间结果，用于实时提示
+        recognition.maxAlternatives = 10;  // 多候选，提高正确率
+        // 尝试挂载数字语法，帮助识别器聚焦数字
+        try {
+          const SpeechGrammarList = window.SpeechGrammarList || window.webkitSpeechGrammarList;
+          if (SpeechGrammarList) {
+            const list = new SpeechGrammarList();
+            list.addFromString(buildNumberGrammar(), 1);
+            recognition.grammars = list;
+          }
+        } catch (e) {
+          // 浏览器不支持语法则静默回退
+        }
       }
     }
 
@@ -754,16 +786,16 @@
       let interimNum = null;
       let sawFinal = false;
 
+      // 遍历所有结果与候选，找到第一个可解析的数字
       for (let i = 0; i < event.results.length; i++) {
         const res = event.results[i];
         if (res.isFinal) sawFinal = true;
         for (let j = 0; j < res.length; j++) {
           const num = parseNumber(res[j].transcript);
           if (num === null) continue;
-          if (res.isFinal) { finalNum = num; break; }
-          if (interimNum === null) interimNum = num;
+          if (res.isFinal && finalNum === null) finalNum = num;
+          if (!res.isFinal && interimNum === null) interimNum = num;
         }
-        if (finalNum !== null) break;
       }
 
       // 拿到最终结果：立即判定
@@ -774,18 +806,10 @@
         return;
       }
 
-      // 临时结果：实时显示；数字稳定 0.7 秒就提前判定，不用等静音超时
+      // 临时结果仅用于实时提示，不再自动判定，避免噪声/回声导致误触发
       if (interimNum !== null && !state.isAnswering) {
         setFeedback('listening', `听到了：${interimNum}`);
-        if (interimNum !== lastInterimNum) {
-          lastInterimNum = interimNum;
-          clearInterimTimer();
-          interimTimer = setTimeout(() => {
-            if (state.isAnswering || !isListening) return;
-            try { recognition.stop(); } catch (e) {}
-            handleAnswer(interimNum);
-          }, 700);
-        }
+        lastInterimNum = interimNum;
         return;
       }
 
@@ -827,11 +851,13 @@
     }
   }
 
-  // 机器人音效台词：擎天柱的答对/答错固定台词用预制音频播放
-  //（TTS 干声 + 30Hz 环形调制，经典机器人金属声；自定义台词不匹配时回退 TTS）
+  // 角色音效台词：默认答对/答错固定台词用预制音频播放
+  //（擎天柱=TTS+金属调制；公主=自然甜美干声；自定义台词不匹配时回退 TTS）
   const ROBOT_AUDIO = {
     '嘟嘟，好棒！': 'audio/optimus-praise.wav',
     '嘟嘟，加油！': 'audio/optimus-encourage.wav',
+    '真棒真棒': 'audio/princess-praise.wav',
+    '加油加油': 'audio/princess-encourage.wav',
   };
 
   function speak(text, onEnd, opts) {
@@ -918,10 +944,49 @@
     }
   }
 
+  // 把阿拉伯数字转成中文数字朗读，避免 TTS 把 "2" 读成 "两"
+  // 例如 12 -> "十二"，20 -> "二十"，101 -> "一百零一"，10000 -> "一万"
+  function numberToChinese(n) {
+    if (n === 0) return '零';
+    if (n < 0) return '负' + numberToChinese(-n);
+    const digits = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+
+    // 处理 0~9999 的一段（内部补零到 4 位）
+    function sectionToChinese(sec) {
+      const units = ['', '十', '百', '千'];
+      const s = String(sec).padStart(4, '0');
+      let result = '';
+      let zero = false;
+      for (let i = 0; i < 4; i++) {
+        const d = parseInt(s[i], 10);
+        const unit = units[3 - i];
+        if (d === 0) {
+          zero = true;
+        } else {
+          if (zero && result) result += digits[0];
+          zero = false;
+          result += digits[d] + unit;
+        }
+      }
+      return result.replace(/^一十/, '十');
+    }
+
+    const wan = Math.floor(n / 10000);
+    const rest = n % 10000;
+    let result = '';
+    if (wan > 0) {
+      result += sectionToChinese(wan) + '万';
+      if (rest > 0 && rest < 1000) result += '零';
+    }
+    if (rest > 0) result += sectionToChinese(rest);
+    return result;
+  }
+
   function readQuestion(onEnd) {
     const q = state.questions[state.currentIndex];
     const opText = { multiply: '乘以', add: '加', subtract: '减', divide: '除以' }[state.operation];
-    const text = `${q.a}${opText}${q.b}等于多少？`;
+    // 朗读用中文数字，显示仍保留阿拉伯数字
+    const text = `${numberToChinese(q.a)}${opText}${numberToChinese(q.b)}等于多少？`;
     speak(text, onEnd);
   }
 
@@ -971,6 +1036,7 @@
         // 除法保证整除：先定除数 b 和商 q，被除数 a = b × q
         let q;
         switch (diff) {
+          case 'd0': b = randInt(2, 9); q = randInt(1, 9); break; // 除法口诀：除数不为 1，商 1~9
           case 'd1': b = randInt(2, 9); q = randInt(Math.ceil(10 / b), Math.floor(99 / b)); break;
           case 'd2': b = randInt(2, 9); q = randInt(Math.ceil(100 / b), Math.floor(999 / b)); break;
           case 'd3': b = randInt(12, 99); q = randInt(Math.ceil(100 / b), 9); break; // 商是一位数
@@ -1063,7 +1129,7 @@
 
   function showQuestion() {
     const q = state.questions[state.currentIndex];
-    const opSymbol = { multiply: '×', add: '+', subtract: '-' }[state.operation];
+    const opSymbol = { multiply: '×', add: '+', subtract: '-', divide: '÷' }[state.operation];
     questionDisplay.textContent = `${q.a} ${opSymbol} ${q.b}`;
     manualAnswer.value = '';
     setFeedback('', '准备好了，请回答');
@@ -1087,6 +1153,8 @@
       return;
     }
     state.count = count;
+    settings.defaultCount = count; // 本次题数存为默认值，下次启动自动带出
+    persistSettings();
     state.questions = generateQuestions();
     state.currentIndex = 0;
     state.score = 0;
@@ -1101,36 +1169,83 @@
   }
 
   // ==================== 答案处理 ====================
+  // 从识别文本中提取整数；兼容阿拉伯数字、中文数字、逐位读法、口头包裹与同音误听
   function parseNumber(text) {
     if (typeof text !== 'string') return null;
+    let cleaned = text.trim().replace(/[，。？！,.?!、\s]+/g, '');
+    if (!cleaned) return null;
 
-    // 1. 直接匹配阿拉伯数字
-    const digitMatch = text.match(/-?\d+/);
-    if (digitMatch) return parseInt(digitMatch[0], 10);
+    // 去掉回答时的口头包裹（"答案是""等于"）和句尾语气词，避免干扰数字解析；
+    // 句首"是"只在后面紧跟数字字时当口头禅去掉（"是六十八"→68）
+    cleaned = cleaned
+      .replace(/^(?:我的?)?答案?是?/, '')
+      .replace(/^等于/, '')
+      .replace(/^是(?=[零一二两三四五六七八九十百千万])/, '')
+      .replace(/[吧啊呀呢嘛哈哦]+$/, '');
+    if (!cleaned) return null;
 
-    // 2. 解析中文数字（支持 个、十、百、千）
+    // 识别引擎常把数字听成同音字（山≈三、酒≈九），孩子的答案只会是数字，
+    // 把这些罕见的同音字统一映射回数字字；"儿/耳"等日常高频字不映射，防止噪声误判
+    const homophone = {
+      '〇': '零', '洞': '零',
+      '幺': '一', '壹': '一',
+      '俩': '两', '贰': '二',
+      '山': '三', '伞': '三', '叁': '三',
+      '寺': '四', '似': '四', '肆': '四',
+      '武': '五', '舞': '五', '伍': '五',
+      '流': '六', '柳': '六', '陆': '六',
+      '妻': '七', '气': '七', '柒': '七',
+      '捌': '八',
+      '酒': '九', '久': '九', '玖': '九',
+      '拾': '十', '佰': '百', '仟': '千',
+    };
+    cleaned = cleaned.replace(/./g, (ch) => homophone[ch] || ch);
+
     const digitMap = {
       '零': 0, '一': 1, '二': 2, '两': 2, '三': 3, '四': 4,
       '五': 5, '六': 6, '七': 7, '八': 8, '九': 9,
     };
-    const unitMap = { '十': 10, '百': 100, '千': 1000 };
+    const unitMap = { '十': 10, '百': 100, '千': 1000, '万': 10000 };
 
+    // 1. 直接匹配阿拉伯数字（支持负数）
+    const digitMatch = cleaned.match(/-?\d+/);
+    if (digitMatch) return parseInt(digitMatch[0], 10);
+
+    // 2. 纯中文数字串（无单位）：按位拼接，如 "二三" -> 23，"二五" -> 25
+    // 这样就不会把 "二八" 错算成 2+8=10
+    const onlyDigits = /^[零一二两三四五六七八九]+$/;
+    if (onlyDigits.test(cleaned)) {
+      let num = 0;
+      for (const ch of cleaned) {
+        num = num * 10 + digitMap[ch];
+      }
+      return num;
+    }
+
+    // 3. 解析中文数字（含单位：十五、一百零五、一千二百三十四、两万零三）
     let total = 0;
     let section = 0;
     let number = 0;
     let hasNumber = false;
+    let lastUnit = 0; // 最近一个单位（十/百/千/万），用于口语省略补位
 
-    for (const ch of text) {
+    for (const ch of cleaned) {
       if (digitMap[ch] !== undefined) {
         number = digitMap[ch];
+        if (number === 0) lastUnit = 0; // "零"打断省略进位（"一百零五"的"五"不是 50）
         hasNumber = true;
       } else if (unitMap[ch] !== undefined) {
-        if (number === 0) number = 1; // 处理 “十五” 这类情况
+        if (number === 0) number = 1; // 处理 "十五" 这类情况
         section += number * unitMap[ch];
+        lastUnit = unitMap[ch];
         number = 0;
         hasNumber = true;
       }
     }
+
+    // 口语省略进位：单位后的尾数自动乘以下一档单位
+    //（"二百五"=250、"三百六"=360、"一万二"=12000）
+    if (number > 0 && lastUnit >= 10) number *= lastUnit / 10;
 
     if (!hasNumber) return null;
     return total + section + number;
@@ -1184,12 +1299,11 @@
     scoreText.textContent = pct + '%';
     document.getElementById('score-circle').style.setProperty('--score-deg', (pct / 100) * 360 + 'deg');
 
-    // 按得分率说不同的话（两个角色共用）
+    // 按得分说不同的话（两个角色共用）
     let line;
-    if (pct === 100) line = '哇噻！你棒呆啦！';
-    else if (pct > 98) line = '很棒哦！';
-    else if (pct > 95) line = '有点棒，加油！';
-    else line = '哦哦，要使劲加油哦！';
+    if (pct > 95) line = '哇塞，好棒呀！';
+    else if (pct > 86) line = '很棒哦！';
+    else line = '要加油哦！';
     scoreMessage.textContent = line;
     resultBubble.textContent = line;
 
@@ -1210,7 +1324,7 @@
       });
     }
 
-    speak(`练习完成，得分率${pct}%。${line}`);
+    speak(`练习完成，得分为${pct}分。${line}`);
   }
 
   // ==================== 事件绑定 ====================

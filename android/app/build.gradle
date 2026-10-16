@@ -11,9 +11,16 @@ android {
         applicationId "com.fanque123.mathpractice"
         minSdk 24
         targetSdk 35
-        versionCode 8
-        versionName "1.7"
+        versionCode 13
+        versionName "1.12"
+        // 只打包真机 ABI（小米等手机都是 arm64），去掉模拟器用的 x86 减小体积
+        ndk { abiFilters 'arm64-v8a', 'armeabi-v7a' }
     }
+}
+
+dependencies {
+    implementation(name: 'sherpa-onnx-1.13.8', ext: 'aar') // 离线语音识别引擎（AAR 在 libs/，flatDir 仓库配在 settings.gradle）
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:2.0.21' // AAR 是 Kotlin 写的，需自带运行时
 }
 
 // 打包前自动把项目根目录的网页文件拷进 assets（单一数据源，网页改了重新打包即可）

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'math-practice-v22';
+const CACHE_NAME = 'math-practice-v28';
 const ASSETS = [
   './',
   './index.html',
@@ -10,6 +10,8 @@ const ASSETS = [
   './apple-touch-icon.png',
   './audio/optimus-praise.wav',
   './audio/optimus-encourage.wav',
+  './audio/princess-praise.wav',
+  './audio/princess-encourage.wav',
 ];
 
 self.addEventListener('install', (event) => {
