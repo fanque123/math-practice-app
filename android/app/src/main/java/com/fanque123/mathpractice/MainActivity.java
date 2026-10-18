@@ -16,14 +16,33 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
-import com.k2fsa.sherpa.onnx.EndpointConfig;
-import com.k2fsa.sherpa.onnx.EndpointRule;
 import com.k2fsa.sherpa.onnx.FeatureConfig;
-import com.k2fsa.sherpa.onnx.OnlineModelConfig;
-import com.k2fsa.sherpa.onnx.OnlineRecognizer;
-import com.k2fsa.sherpa.onnx.OnlineRecognizerConfig;
-import com.k2fsa.sherpa.onnx.OnlineStream;
-import com.k2fsa.sherpa.onnx.OnlineTransducerModelConfig;
+import com.k2fsa.sherpa.onnx.HomophoneReplacerConfig;
+import com.k2fsa.sherpa.onnx.OfflineCanaryModelConfig;
+import com.k2fsa.sherpa.onnx.OfflineCohereTranscribeModelConfig;
+import com.k2fsa.sherpa.onnx.OfflineDolphinModelConfig;
+import com.k2fsa.sherpa.onnx.OfflineFireRedAsrCtcModelConfig;
+import com.k2fsa.sherpa.onnx.OfflineFireRedAsrModelConfig;
+import com.k2fsa.sherpa.onnx.OfflineFunAsrNanoModelConfig;
+import com.k2fsa.sherpa.onnx.OfflineMedAsrCtcModelConfig;
+import com.k2fsa.sherpa.onnx.OfflineModelConfig;
+import com.k2fsa.sherpa.onnx.OfflineMoonshineModelConfig;
+import com.k2fsa.sherpa.onnx.OfflineNemoEncDecCtcModelConfig;
+import com.k2fsa.sherpa.onnx.OfflineOmnilingualAsrCtcModelConfig;
+import com.k2fsa.sherpa.onnx.OfflineParaformerModelConfig;
+import com.k2fsa.sherpa.onnx.OfflineQwen3AsrModelConfig;
+import com.k2fsa.sherpa.onnx.OfflineRecognizer;
+import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig;
+import com.k2fsa.sherpa.onnx.OfflineSenseVoiceModelConfig;
+import com.k2fsa.sherpa.onnx.OfflineStream;
+import com.k2fsa.sherpa.onnx.OfflineTransducerModelConfig;
+import com.k2fsa.sherpa.onnx.OfflineWenetCtcModelConfig;
+import com.k2fsa.sherpa.onnx.OfflineWhisperModelConfig;
+import com.k2fsa.sherpa.onnx.OfflineZipformerCtcModelConfig;
+import com.k2fsa.sherpa.onnx.SileroVadModelConfig;
+import com.k2fsa.sherpa.onnx.SpeechSegment;
+import com.k2fsa.sherpa.onnx.Vad;
+import com.k2fsa.sherpa.onnx.VadModelConfig;
 
 import java.util.ArrayList;
 import java.util.Locale;
@@ -32,31 +51,41 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * 极简 WebView 壳：全屏加载打包在 assets 里的口算练习网页。
  * WebView 不支持 Web Speech API，语音能力由原生桥 window.AndroidNative 提供：
- * 朗读走系统 TTS（小米=讯飞/小爱引擎），识别走 sherpa-onnx 离线引擎
- * （模型在 assets/sherpa-model，全程本地识别，不依赖系统 SpeechRecognizer 和网络，
- * 解决小米等国产 ROM 上系统识别服务不稳定的问题）。
+ * 朗读走系统 TTS（小米=讯飞/小爱引擎），识别走 sherpa-onnx 离线引擎。
+ *
+ * v1.13 起识别换成「非流式中文 Paraformer + Silero VAD」：
+ * 先用 VAD 判断一句话什么时候说完，再把整段音频一次性送进 Paraformer。
+ * 非流式模型能看到整句上下文，数字尾音不会被吞掉；旧的流式 zipformer
+ * 会把“七十二”听成“七十”、“一百零二”听成“一百”（实测 40 题错 24 题）。
  */
 public class MainActivity extends Activity {
     private WebView webView;
     private TextToSpeech tts;
     private volatile boolean ttsReady = false;
     // 离线识别器：onCreate 时后台线程加载模型，避免卡住首屏
-    private volatile OnlineRecognizer asr = null;
+    private volatile OfflineRecognizer asr = null;
     private volatile boolean asrInitFailed = false;
+    // VAD 配置（Silero，643KB）：判断孩子什么时候说完一句
+    private volatile VadModelConfig vadConfig = null;
+    // 解码前拼在录音前面的「答案是」提示音（16kHz PCM）。
+    // 非流式 Paraformer 对孤立单字（尤其"五"）容易输出英文 "who"，
+    // 前面垫一句中文能把语言拉回中文；实测 0~9 单字从 9/10 变 10/10，
+    // 40 个多位数仍 40/40。parseNumber() 会自动去掉"答案是"前缀。
+    private volatile float[] promptSamples = null;
     // 当前录音识别会话（每次 startListening 一个会话，线程安全地停止旧会话）
     private volatile RecogSession recogSession = null;
+    // sherpa-onnx 的 C++ 识别器不是线程安全的，串行调用
+    private final Object asrLock = new Object();
     private boolean wantStartListening = false;
     private final Handler main = new Handler(Looper.getMainLooper());
     private static final int REQ_MIC = 1;
     private static final int SAMPLE_RATE = 16000;
-
-    // 数字热词：答案只会是数字，给数字/单位字加权，让解码明显偏向数字，
-    // 抑制把"三"听成"山"、"十"听成"是"这类同音误判。
-    // 格式：每行一个词（cjkchar 模型单字即 token，多字词需空格分字），":2" 为加权分值。
-    // 注意：热词只在 modified_beam_search 解码下生效（greedy_search 不支持）。
-    private static final String HOTWORDS =
-            "零 :2\n一 :2\n二 :2\n两 :2\n三 :2\n四 :2\n五 :2\n六 :2\n七 :2\n八 :2\n九 :2\n"
-            + "十 :2\n百 :2\n千 :2\n万 :2";
+    /** 说完后静音多久算一句结束；太短会把“七十二”的“二”切掉，太长则反应慢 */
+    private static final float VAD_MIN_SILENCE = 1.0f;
+    /** 一句最长录音，防止孩子一直说话不出结果 */
+    private static final float VAD_MAX_SPEECH = 10.0f;
+    /** 一直没人说话多久后提示「没听清」 */
+    private static final long NO_SPEECH_TIMEOUT_MS = 10000;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -94,49 +123,102 @@ public class MainActivity extends Activity {
             @Override public void onError(String id) { js("__nativeTtsDone"); } // 出错也放行，防卡死
         });
 
-        // 后台预加载离线识别模型（约 48MB，首次加载 2~3 秒），避免第一题开始时等待
+        // 后台预加载离线识别模型（约 82MB，首次加载 2~4 秒），避免第一题开始时等待
         new Thread(this::initAsr).start();
     }
 
     /** 初始化 sherpa-onnx 离线识别器（子线程调用）；模型路径相对 assets */
     private void initAsr() {
         try {
-            // 模型：streaming zipformer small-bilingual-zh-en int8（约 48MB，
-            // 比原 zh-14M 模型大一档，中文识别明显更准；modelType 同为 zipformer）
-            OnlineTransducerModelConfig transducer = new OnlineTransducerModelConfig();
-            transducer.setEncoder("sherpa-model/encoder-epoch-99-avg-1.int8.onnx");
-            transducer.setDecoder("sherpa-model/decoder-epoch-99-avg-1.int8.onnx");
-            transducer.setJoiner("sherpa-model/joiner-epoch-99-avg-1.int8.onnx");
+            // 模型：Paraformer-zh-small int8（阿里 FunASR Paraformer，中文专用非流式，
+            // 约 82MB）。官方导出的 onnx 缺 sherpa 需要的 CMVN 元数据，构建前已补齐：
+            // vocab_size / lfr_window_size=7 / lfr_window_shift=6 / neg_mean / inv_stddev
+            OfflineParaformerModelConfig paraformer = new OfflineParaformerModelConfig();
+            paraformer.setModel("sherpa-model/model.int8.onnx");
 
-            OnlineModelConfig modelConfig = new OnlineModelConfig();
-            modelConfig.setTransducer(transducer);
-            modelConfig.setTokens("sherpa-model/tokens.txt");
-            modelConfig.setModelType("zipformer"); // 流式 zipformer v1（pruned transducer stateless）
-            modelConfig.setNumThreads(2);
-            modelConfig.setProvider("cpu");
-            modelConfig.setDebug(false);
+            OfflineModelConfig modelConfig = new OfflineModelConfig(
+                    new OfflineTransducerModelConfig(),
+                    paraformer,
+                    new OfflineWhisperModelConfig(),
+                    new OfflineFireRedAsrModelConfig(),
+                    new OfflineMoonshineModelConfig(),
+                    new OfflineNemoEncDecCtcModelConfig(),
+                    new OfflineSenseVoiceModelConfig(),
+                    new OfflineDolphinModelConfig(),
+                    new OfflineZipformerCtcModelConfig(),
+                    new OfflineWenetCtcModelConfig(),
+                    new OfflineOmnilingualAsrCtcModelConfig(),
+                    new OfflineMedAsrCtcModelConfig(),
+                    new OfflineFunAsrNanoModelConfig(),
+                    new OfflineQwen3AsrModelConfig(),
+                    new OfflineFireRedAsrCtcModelConfig(),
+                    new OfflineCanaryModelConfig(),
+                    new OfflineCohereTranscribeModelConfig(),
+                    "",                                 // teleSpeech
+                    2,                                  // numThreads
+                    false,                              // debug
+                    "cpu",                              // provider
+                    "paraformer",                       // modelType
+                    "sherpa-model/tokens.txt",          // tokens
+                    "",                                 // modelingUnit
+                    "");                                // bpeVocab
 
-            FeatureConfig featConfig = new FeatureConfig();
-            featConfig.setSampleRate(SAMPLE_RATE);
-            featConfig.setFeatureDim(80);
+            OfflineRecognizerConfig config = new OfflineRecognizerConfig(
+                    new FeatureConfig(SAMPLE_RATE, 80, 0f),
+                    modelConfig,
+                    new HomophoneReplacerConfig(),
+                    "greedy_search",
+                    4,
+                    "",
+                    1.5f,
+                    "",
+                    "",
+                    0f);
 
-            // 端点规则：说完停顿 1.2 秒判为一句结束并出最终结果；整句最长 20 秒
-            EndpointConfig endpointConfig = new EndpointConfig();
-            endpointConfig.setRule1(new EndpointRule(false, 2.4f, 0f));
-            endpointConfig.setRule2(new EndpointRule(true, 1.2f, 0f));
-            endpointConfig.setRule3(new EndpointRule(true, 0f, 20f));
+            asr = new OfflineRecognizer(getAssets(), config);
 
-            OnlineRecognizerConfig config = new OnlineRecognizerConfig();
-            config.setFeatConfig(featConfig);
-            config.setModelConfig(modelConfig);
-            config.setEndpointConfig(endpointConfig);
-            config.setEnableEndpoint(true);
-            // modified_beam_search：热词只在该解码方式下生效，且本身比 greedy_search 略准
-            config.setDecodingMethod("modified_beam_search");
+            SileroVadModelConfig silero = new SileroVadModelConfig();
+            silero.setModel("sherpa-model/silero_vad.onnx");
+            silero.setThreshold(0.5f);
+            silero.setMinSilenceDuration(VAD_MIN_SILENCE);
+            // 单个数字（"二""五"）往往只有 0.15~0.2 秒，设 0.25 会被 VAD 丢掉，
+            // 导致一位数答案永远识别不到；0.1 秒可稳定捕获
+            silero.setMinSpeechDuration(0.1f);
+            silero.setWindowSize(512);
+            silero.setMaxSpeechDuration(VAD_MAX_SPEECH);
 
-            asr = new OnlineRecognizer(getAssets(), config);
-        } catch (Exception e) {
+            VadModelConfig vc = new VadModelConfig();
+            vc.setSileroVadModelConfig(silero);
+            vc.setSampleRate(SAMPLE_RATE);
+            vc.setNumThreads(1);
+            vc.setProvider("cpu");
+            vc.setDebug(false);
+            vadConfig = vc;
+
+            promptSamples = loadPcm("sherpa-model/prompt.pcm");
+        } catch (Throwable t) {
             asrInitFailed = true;
+        }
+    }
+
+    /** 读取 16kHz 单声道 int16 裸 PCM，转成 [-1,1] 的 float 数组 */
+    private float[] loadPcm(String path) {
+        try (java.io.InputStream is = getAssets().open(path)) {
+            java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+            byte[] tmp = new byte[8192];
+            int n;
+            while ((n = is.read(tmp)) > 0) bos.write(tmp, 0, n);
+            byte[] bytes = bos.toByteArray();
+            short[] shorts = new short[bytes.length / 2];
+            java.nio.ByteBuffer.wrap(bytes)
+                    .order(java.nio.ByteOrder.LITTLE_ENDIAN)
+                    .asShortBuffer()
+                    .get(shorts);
+            float[] out = new float[shorts.length];
+            for (int i = 0; i < shorts.length; i++) out[i] = shorts[i] / 32768.0f;
+            return out;
+        } catch (Throwable t) {
+            return null;
         }
     }
 
@@ -240,7 +322,7 @@ public class MainActivity extends Activity {
             js("__nativeRecogError(-1)"); // 离线模型加载失败（不应发生，除非 APK 缺文件）
             return;
         }
-        if (asr == null) {
+        if (asr == null || vadConfig == null) {
             // 模型还在后台加载，稍等重试（加载失败时 asrInitFailed 会终止重试）
             main.postDelayed(this::doStartListening, 300);
             return;
@@ -259,10 +341,11 @@ public class MainActivity extends Activity {
     }
 
     /**
-     * 一次录音识别会话：AudioRecord 采音 → sherpa-onnx 流式解码。
-     * 模拟 Web Speech 的事件语义回掉网页：
-     * 开始=__nativeRecogStart；中间结果=__nativeRecogResult(json,false)；
-     * 端点（停顿1.2秒）或网页主动 stop=__nativeRecogResult(json,true) + __nativeRecogEnd。
+     * 一次录音识别会话：AudioRecord 采音 → Silero VAD 判断句子结束 →
+     * 整段音频一次性送 Paraformer 解码。
+     * 模拟 Web Speech 的事件语义回调网页：
+     * 开始=__nativeRecogStart；最终结果=__nativeRecogResult(json,true) + __nativeRecogEnd。
+     * 非流式模型不需要中间结果，网页端只在拿到最终结果时判分。
      */
     private class RecogSession {
         private final AtomicBoolean running = new AtomicBoolean(true);
@@ -279,59 +362,79 @@ public class MainActivity extends Activity {
             AudioRecord record = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION,
                     SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO,
                     AudioFormat.ENCODING_PCM_16BIT, Math.max(minBuf, SAMPLE_RATE));
-            OnlineStream stream = asr.createStream(HOTWORDS); // 每次会话都挂数字热词
+            Vad vad = null;
             boolean finalDelivered = false;
             try {
+                vad = new Vad(getAssets(), vadConfig);
                 record.startRecording();
                 js("__nativeRecogStart");
                 short[] buf = new short[SAMPLE_RATE / 10]; // 每次读 0.1 秒
-                float[] samples = new float[buf.length];
-                String lastText = "";
                 long sessionStart = System.currentTimeMillis();
+                long lastSpeechAt = sessionStart;
+                boolean speechSeen = false;
+
                 while (running.get()) {
                     int n = record.read(buf, 0, buf.length);
                     if (n <= 0) continue;
+                    float[] samples = new float[n];
                     for (int i = 0; i < n; i++) samples[i] = buf[i] / 32768.0f;
-                    stream.acceptWaveform(samples, SAMPLE_RATE);
-                    while (asr.isReady(stream)) asr.decode(stream);
-                    String text = asr.getResult(stream).getText().trim();
-                    if (!text.equals(lastText)) {
-                        lastText = text;
-                        if (!text.isEmpty()) {
-                            ArrayList<String> list = new ArrayList<>();
-                            list.add(text);
-                            js("__nativeRecogResult(" + jsStr(toJsonArray(list)) + ", false)");
-                        }
+
+                    vad.acceptWaveform(samples);
+                    if (vad.isSpeechDetected()) {
+                        speechSeen = true;
+                        lastSpeechAt = System.currentTimeMillis();
                     }
-                    if (asr.isEndpoint(stream)) {
-                        asr.reset(stream);
+
+                    // VAD 已经切出完整一句：解码并交卷
+                    while (!vad.empty()) {
+                        SpeechSegment segment = vad.front();
+                        float[] segSamples = segment.getSamples();
+                        vad.pop();
+                        speechSeen = true;
+                        lastSpeechAt = System.currentTimeMillis();
+                        if (segSamples == null || segSamples.length < SAMPLE_RATE / 10) continue;
+                        String text = decode(segSamples);
                         if (!text.isEmpty()) {
-                            // 一句结束且有内容：交付最终结果并结束本次会话
                             finalDelivered = true;
                             deliverFinal(text);
                             return;
                         }
-                        // 纯静音端点：超过 10 秒没人说话则上报 no-speech，让网页提示重试
-                        if (System.currentTimeMillis() - sessionStart > 10000) {
+                    }
+
+                    long now = System.currentTimeMillis();
+                    if (!speechSeen && now - sessionStart > NO_SPEECH_TIMEOUT_MS) {
+                        finalDelivered = true;
+                        js("__nativeRecogError(6)"); // 一直没说话，网页提示「没听清」
+                        js("__nativeRecogEnd");
+                        return;
+                    }
+                    if (speechSeen && now - lastSpeechAt > 15000) {
+                        // 有声音但 VAD 始终没切出句子（极端噪声），兜底结束
+                        finalDelivered = true;
+                        js("__nativeRecogEnd");
+                        return;
+                    }
+                }
+
+                // 网页主动 stop（点重说/退出）：把 VAD 里没切完的半句也解出来
+                if (deliverOnStop && !finalDelivered) {
+                    vad.flush();
+                    while (!vad.empty()) {
+                        SpeechSegment segment = vad.front();
+                        float[] segSamples = segment.getSamples();
+                        vad.pop();
+                        if (segSamples == null || segSamples.length < SAMPLE_RATE / 10) continue;
+                        String text = decode(segSamples);
+                        if (!text.isEmpty()) {
                             finalDelivered = true;
-                            js("__nativeRecogError(6)");
-                            js("__nativeRecogEnd");
+                            deliverFinal(text);
                             return;
                         }
                     }
-                }
-                // 网页主动 stop（拿到最终结果后或点重说前）：把手头文本作为最终结果交付
-                if (deliverOnStop && !finalDelivered) {
-                    while (asr.isReady(stream)) asr.decode(stream);
-                    String text = asr.getResult(stream).getText().trim();
                     finalDelivered = true;
-                    if (!text.isEmpty()) {
-                        deliverFinal(text);
-                    } else {
-                        js("__nativeRecogEnd");
-                    }
+                    js("__nativeRecogEnd");
                 }
-            } catch (Exception e) {
+            } catch (Throwable t) {
                 if (!finalDelivered) {
                     js("__nativeRecogError(-2)");
                     js("__nativeRecogEnd");
@@ -339,7 +442,31 @@ public class MainActivity extends Activity {
             } finally {
                 try { record.stop(); } catch (Exception ignored) {}
                 record.release();
-                stream.release();
+                if (vad != null) vad.release();
+            }
+        }
+
+        /** 整段音频一次性解码（非流式 Paraformer），返回识别文本 */
+        private String decode(float[] samples) {
+            OfflineStream stream = null;
+            try {
+                float[] input = samples;
+                float[] prompt = promptSamples;
+                if (prompt != null && prompt.length > 0) {
+                    input = new float[prompt.length + samples.length];
+                    System.arraycopy(prompt, 0, input, 0, prompt.length);
+                    System.arraycopy(samples, 0, input, prompt.length, samples.length);
+                }
+                synchronized (asrLock) {
+                    stream = asr.createStream();
+                    stream.acceptWaveform(input, SAMPLE_RATE);
+                    asr.decode(stream);
+                    return asr.getResult(stream).getText().trim();
+                }
+            } catch (Throwable t) {
+                return "";
+            } finally {
+                if (stream != null) stream.release();
             }
         }
 
